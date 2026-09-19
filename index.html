@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="找充電站">
+  <title>找充電站</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>⚡ 找充電站</h1>
+    <button id="btnSettings" class="icon-btn" aria-label="設定">⚙️</button>
+  </header>
+
+  <main>
+    <form id="searchForm" class="search" autocomplete="off">
+      <input id="q" type="search" placeholder="輸入目的地，例如：台北101" enterkeyhint="search" required>
+      <button type="submit" class="primary">搜尋</button>
+    </form>
+    <div class="search-extra">
+      <button id="btnHere" type="button" class="link-btn">📍 用目前位置當目的地</button>
+      <span id="modeBadge" class="badge"></span>
+    </div>
+
+    <div id="status" class="status" hidden></div>
+    <ul id="candidates" class="candidates" hidden></ul>
+
+    <section id="resultSection" hidden>
+      <div class="result-head">
+        <div>
+          <div class="muted small">目的地</div>
+          <div id="destName" class="dest-name"></div>
+        </div>
+        <select id="sortBy" aria-label="排序">
+          <option value="walk">步行最近</option>
+          <option value="avail">空位最多</option>
+        </select>
+      </div>
+      <div id="map" class="map"></div>
+      <ol id="results" class="results"></ol>
+      <div id="moreBox" class="more" hidden>
+        <button id="btnMore" type="button" class="secondary">放寬到步行 10 分鐘</button>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="settings">
+    <form method="dialog" class="settings-form">
+      <h2>設定</h2>
+      <label>Google Maps Platform API 金鑰
+        <input id="gKey" type="password" placeholder="提供即時空位（Places API (New) + Routes API）">
+      </label>
+      <label>Open Charge Map API 金鑰
+        <input id="ocmKey" type="password" placeholder="提供費率資訊（免費申請）">
+      </label>
+      <label>步行上限（分鐘）
+        <input id="walkMin" type="number" min="1" max="30" step="1">
+      </label>
+      <label class="check"><input id="demo" type="checkbox"> 示範模式（假資料，不需金鑰）</label>
+      <p class="muted small">金鑰只存在這支手機的瀏覽器中，不會上傳到 GitHub。申請方式請見專案 README。</p>
+      <div class="row">
+        <button value="cancel" class="secondary">取消</button>
+        <button id="btnSave" value="save" class="primary">儲存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
