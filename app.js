@@ -40,11 +40,15 @@ const el = {
   form: $('searchForm'), q: $('q'), here: $('btnHere'), badge: $('modeBadge'),
   status: $('status'), candidates: $('candidates'),
   section: $('resultSection'), destName: $('destName'), sortBy: $('sortBy'),
-  results: $('results'), moreBox: $('moreBox'), more: $('btnMore'),
+  results: $('results'), srcNote: $('srcNote'), moreBox: $('moreBox'), more: $('btnMore'),
   dlg: $('settings'), gKey: $('gKey'), ocmKey: $('ocmKey'), walkMin: $('walkMin'), demo: $('demo'),
 };
 
-const state = { dest: null, stations: [], limitMin: 5, selectedId: null, rates: [] };
+const state = { dest: null, stations: [], limitMin: 5, selectedId: null, ocmNote: '' };
+const ratesReady = fetch('rates.json')
+  .then((r) => (r.ok ? r.json() : {}))
+  .catch(() => ({}))
+  .then((d) => ({ rules: d.rules || [], updated: d.updated || '' }));
 let map, mapLayer;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -199,21 +203,21 @@ async function ocmStations(dest, radiusM) {
 
 function demoStations(dest) {
   const seeds = [
-    ['Tesla 超級充電站 信義', 120, 60, 12, 5, 'Tesla', 250, 'NT$ 13/kWh（示範）'],
-    ['U-POWER 超高速充電站', -180, 140, 6, 1, 'CCS1', 360, 'NT$ 15/kWh（示範）'],
-    ['EVOASIS 源點 百貨停車場', 90, -230, 8, 0, 'CCS1', 180, 'NT$ 12/kWh（示範）'],
-    ['Yes!來電 購物中心 B2', -60, -90, 10, 7, 'J1772', 7, 'NT$ 60/小時（示範）'],
-    ['公有停車場 充電格', 310, 200, 4, 2, 'Type 2', 22, '停車費另計，充電免費（示範）'],
-    ['飯店地下停車場', -330, -120, 2, 2, 'J1772', 7, null],
-    ['iCHARGING 商辦大樓', 520, -260, 6, 3, 'CCS1', 120, 'NT$ 11/kWh（示範）'],
+    ['Tesla 超級充電站 信義', 120, 60, 12, 5, 'Tesla', 250],
+    ['U-POWER 超高速充電站', -180, 140, 6, 1, 'CCS1', 360],
+    ['EVOASIS 源點 百貨停車場', 90, -230, 8, 0, 'CCS1', 180],
+    ['Yes!來電 購物中心 B2', -60, -90, 10, 7, 'J1772', 7],
+    ['公有停車場 充電格', 310, 200, 4, 2, 'Type 2', 22],
+    ['飯店地下停車場', -330, -120, 2, 2, 'J1772', 7],
+    ['iCHARGING 商辦大樓', 520, -260, 6, 3, 'CCS1', 120],
   ];
   const mPerDegLat = 111320, mPerDegLng = 111320 * Math.cos(dest.lat * Math.PI / 180);
-  return seeds.map(([name, dx, dy, total, avail, type, kw, cost], i) => ({
+  return seeds.map(([name, dx, dy, total, avail, type, kw], i) => ({
     id: 'd:' + i, name, address: '示範地址',
     lat: dest.lat + dy / mPerDegLat, lng: dest.lng + dx / mPerDegLng,
     total, available: avail, outOfService: 0, updatedAt: new Date().toISOString(),
     connectors: [{ type, kw, count: total, available: avail }],
-    openNow: true, rating: 4.2, mapsUri: null, cost, operator: null,
+    openNow: true, rating: 4.2, mapsUri: null, cost: null, operator: null,
   }));
 }
 
@@ -232,12 +236,41 @@ function mergeOcmInto(googleList, ocmList) {
   return googleList;
 }
 
-function applyRateTable(stations) {
+// 台灣時間的費率時段：平日 16:00-21:59 尖峰，其餘離峰；週六日為假日
+function currentPeriod() {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', weekday: 'short', hour: 'numeric', hourCycle: 'h23' })
+    .formatToParts(new Date());
+  const wd = parts.find((p) => p.type === 'weekday').value;
+  const hour = Number(parts.find((p) => p.type === 'hour').value);
+  if (wd === 'Sat' || wd === 'Sun') return { key: 'weekend', label: '假日' };
+  if (hour >= 16 && hour < 22) return { key: 'peak', label: '平日尖峰' };
+  return { key: 'offpeak', label: '平日離峰' };
+}
+
+function describeRule(rule, updated) {
+  const tail = `參考 ${rule.operator} 公告費率${updated ? `（${updated} 整理）` : ''}，實際以現場/App 為準`;
+  if (rule.text) return { cost: rule.text, detail: tail };
+  if (rule.flat != null) {
+    return { cost: `NT$ ${rule.flat}/度（不分時段）`, detail: [rule.note, tail].filter(Boolean).join('；') };
+  }
+  const p = currentPeriod();
+  const now = rule[p.key];
+  return {
+    cost: `現在 NT$ ${now}/度（${p.label}）`,
+    detail: [`離峰 ${rule.offpeak}・尖峰 ${rule.peak}・假日 ${rule.weekend}`, rule.note, tail].filter(Boolean).join('；'),
+  };
+}
+
+function applyRateTable(stations, rates) {
   for (const s of stations) {
-    if (s.cost) continue;
+    if (s.cost) { s.costDetail = s.costDetail || '來源：Open Charge Map 使用者回報'; continue; }
     const hay = `${s.name} ${s.operator || ''}`.toLowerCase();
-    const rule = state.rates.find((r) => (r.match || []).some((m) => hay.includes(String(m).toLowerCase())));
-    if (rule) s.cost = `${rule.price}（參考費率，實際以現場為準）`;
+    const rule = rates.rules.find((r) => (r.match || []).some((m) => hay.includes(String(m).toLowerCase())));
+    if (rule) {
+      const { cost, detail } = describeRule(rule, rates.updated);
+      s.cost = cost;
+      s.costDetail = detail;
+    }
   }
 }
 
@@ -279,20 +312,26 @@ async function loadStations(dest) {
   // 搜尋半徑取稍大於步行上限，最後再用步行時間過濾
   const radiusM = Math.round(Math.max(state.limitMin, 10) * WALK_M_PER_MIN * 1.1);
   let list;
+  state.ocmNote = '';
   if (settings.demo) {
     list = demoStations(dest);
   } else if (settings.gKey) {
+    let ocmError = '';
     const [g, o] = await Promise.all([
       googleStations(dest, radiusM),
-      settings.ocmKey ? ocmStations(dest, radiusM).catch((e) => { console.warn('OCM 失敗', e); return []; }) : [],
+      settings.ocmKey ? ocmStations(dest, radiusM).catch((e) => { console.warn('OCM 失敗', e); ocmError = e.message; return []; }) : [],
     ]);
     list = mergeOcmInto(g, o);
+    if (!settings.ocmKey) state.ocmNote = 'Open Charge Map：未設定金鑰';
+    else if (ocmError) state.ocmNote = `Open Charge Map 查詢失敗：${ocmError}`;
+    else state.ocmNote = `Open Charge Map：附近 ${o.length} 站，其中 ${o.filter((x) => x.cost).length} 站有費率資料`;
   } else if (settings.ocmKey) {
     list = await ocmStations(dest, radiusM);
+    state.ocmNote = '';
   } else {
     throw new Error('尚未設定 API 金鑰。請點右上角 ⚙️ 設定，或開啟示範模式。');
   }
-  applyRateTable(list);
+  applyRateTable(list, await ratesReady);
   await addWalkTimes(list, dest);
   return list;
 }
@@ -353,6 +392,9 @@ function render() {
   el.results.innerHTML = top.length ? top.map(cardHtml).join('')
     : `<li class="status">步行 ${limitMin} 分鐘內沒有找到充電站。</li>`;
 
+  el.srcNote.textContent = state.ocmNote;
+  el.srcNote.hidden = !state.ocmNote;
+
   const canExpand = limitMin < 10 && top.length < TOP_N;
   el.moreBox.hidden = !canExpand;
   drawMap(top);
@@ -386,7 +428,8 @@ function cardHtml(s) {
       <div class="stat"><div class="v">${Math.max(1, Math.round(s.walkMin))} 分</div><div class="l">走到目的地${s.walkEstimated ? '（估）' : ''}</div></div>
       <div class="stat"><div class="v">${s.walkM} m</div><div class="l">步行距離</div></div>
     </div>
-    <div class="cost">💰 費率：${s.cost ? esc(s.cost) : '<span class="muted">未提供，請以現場或業者 App 為準</span>'}</div>
+    <div class="cost">💰 費率：${s.cost ? esc(s.cost) : '<span class="muted">未提供（查無營運商費率），請以現場或業者 App 為準</span>'}</div>
+    ${s.costDetail ? `<div class="small muted">${esc(s.costDetail)}</div>` : ''}
     <div class="chips">${conns}</div>
     ${meta ? `<div class="small muted">${meta}</div>` : ''}
     <div class="actions">
@@ -492,6 +535,5 @@ el.dlg.addEventListener('close', () => {
 });
 
 // ---------- 初始化 ----------
-fetch('rates.json').then((r) => r.ok ? r.json() : { rules: [] }).then((d) => { state.rates = d.rules || []; }).catch(() => {});
 updateBadge();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

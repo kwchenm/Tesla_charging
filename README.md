@@ -40,20 +40,17 @@
 
 到 <https://openchargemap.org/site/develop/api> 註冊後免費取得金鑰。費率是社群填寫的文字，未必最新。
 
-## 自訂費率（rates.json）
+## 費率從哪來
 
-API 沒有提供費率時，會用站名或營運商比對 `rates.json`，顯示為「參考費率」：
+Google API **不提供充電價格**，所以費率依序來自：
 
-```json
-{
-  "rules": [
-    { "match": ["tesla", "特斯拉"], "price": "NT$ ??/kWh" },
-    { "match": ["u-power"], "price": "NT$ ??/kWh" }
-  ]
-}
-```
+1. **Open Charge Map** 使用者回報的費率（需 OCM 金鑰；台灣資料不多）
+2. **[rates.json](rates.json)**：依站名/營運商關鍵字比對，已內建 Tesla、U-POWER、EVOASIS、EVALUE、TAIL、星舟、全國特急電、iCHARGING 的公告費率，並依**現在時段**（平日尖峰 16:00–21:59／離峰／假日）顯示當下價格
+3. 都比對不到（例如站名只寫「某某停車場」）就顯示「未提供」
 
-請依各業者官網最新公告填入。
+搜尋結果下方會顯示 Open Charge Map 的查詢狀態，方便確認金鑰是否正常。
+
+業者價格常調整，更新時直接改 `rates.json` 的數字和 `updated` 日期即可，push 後自動部署。
 
 ## 本機開發
 

@@ -1,5 +1,5 @@
 // 網路優先：有網路時永遠拿最新版，離線時才用快取的畫面。API 請求不快取。
-const CACHE = 'ev-finder-v1';
+const CACHE = 'ev-finder-v2';
 const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'rates.json', 'manifest.webmanifest', 'icon.svg', 'icon-192.png'];
 
 self.addEventListener('install', (e) => {

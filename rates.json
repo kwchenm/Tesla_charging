@@ -1,4 +1,113 @@
 {
-  "_說明": "當 API 沒有提供費率時，依站名或營運商名稱比對，顯示為「參考費率」。match 為關鍵字（不分大小寫），price 為要顯示的文字。請依各業者官網最新公告自行填入。",
-  "rules": []
+  "_說明": "API 沒有費率時，依站名/營運商關鍵字比對（由上往下，先符合者優先；Tesla 關鍵字較寬鬆所以放最後）。價格單位：元/度。peak = 平日尖峰 16:00-21:59，offpeak = 平日其他時段，weekend = 週六日全天。只填 flat 代表不分時段。價格會變動，更新時請同時改 updated。",
+  "updated": "2026-09-19",
+  "rules": [
+    {
+      "operator": "Tesla 目的地充電",
+      "match": [
+        "destination",
+        "目的地充電"
+      ],
+      "text": "依場所規定（多為免費或含在停車費內）",
+      "source": "https://www.tesla.com/zh_tw/findus/list/superchargers/Taiwan"
+    },
+    {
+      "operator": "U-POWER",
+      "match": [
+        "u-power",
+        "upower",
+        "旭電馳"
+      ],
+      "offpeak": 6.9,
+      "peak": 13.5,
+      "weekend": 8.5,
+      "note": "會員價；非會員全天 14 元",
+      "source": "https://www.u-power.com.tw/charge.html"
+    },
+    {
+      "operator": "EVOASIS 源點",
+      "match": [
+        "evoasis",
+        "源點"
+      ],
+      "offpeak": 6.5,
+      "peak": 13.2,
+      "weekend": 8.4,
+      "note": "訂閱方案另有 9～75 折",
+      "source": "https://electrify.tw/taiwan-ev-charging-deals-guide/"
+    },
+    {
+      "operator": "EVALUE 華城",
+      "match": [
+        "evalue",
+        "華城"
+      ],
+      "offpeak": 6.6,
+      "peak": 13.5,
+      "weekend": 8.3,
+      "note": "120-180kW 快充價；240kW 以上超充離峰 8.0、假日 9.0",
+      "source": "https://electrify.tw/taiwan-ev-charging-deals-guide/"
+    },
+    {
+      "operator": "TAIL 特爾電力",
+      "match": [
+        "特爾電力",
+        "tail特爾",
+        "tail 特爾"
+      ],
+      "offpeak": 6.5,
+      "peak": 13.5,
+      "weekend": 8.0,
+      "source": "https://electrify.tw/taiwan-ev-charging-deals-guide/"
+    },
+    {
+      "operator": "星舟快充",
+      "match": [
+        "星舟",
+        "star charger",
+        "starcharger"
+      ],
+      "offpeak": 6.5,
+      "peak": 13.5,
+      "weekend": 8.0,
+      "source": "https://electrify.tw/taiwan-ev-charging-deals-guide/"
+    },
+    {
+      "operator": "全國特急電",
+      "match": [
+        "特急電",
+        
+        "national ev"
+      ],
+      "offpeak": 5.9,
+      "peak": 12.9,
+      "weekend": 5.9,
+      "source": "https://electrify.tw/taiwan-ev-charging-deals-guide/"
+    },
+    {
+      "operator": "iCHARGING 中興電工",
+      "match": [
+        "icharging",
+        "i-charging",
+        "中興電工"
+      ],
+      "flat": 8.0,
+      "note": "市區站；國道站約 9.2～10 元",
+      "source": "https://electrify.tw/taiwan-ev-charging-deals-guide/"
+    },
+    {
+      "operator": "Tesla 超級充電站",
+      "match": [
+        "tesla",
+        "特斯拉",
+        "supercharger",
+        "超級充電"
+      ],
+      "offpeak": 6,
+      "peak": 13,
+      "weekend": 7,
+      "note": "約 7 成站點適用；國道等部分站點約 11 元固定；閒置另收佔位費",
+      "source": "https://electrify.tw/supercharger/"
+    }
+  ]
 }
